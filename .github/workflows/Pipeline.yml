@@ -1,0 +1,74 @@
+name: Pipeline
+
+
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 5'
+
+
+env:
+  CI: true
+  DOCKER_BUILDKIT: 1
+
+
+jobs:
+
+
+  Doc:
+    runs-on: ubuntu-latest
+    name: '📓 Docs'
+    steps:
+
+    - name: '🧰 Checkout'
+      uses: actions/checkout@v2
+
+    - name: '🛳️ Build vhdl/doc'
+      run: |
+        docker build -t vhdl/doc - <<-EOF
+        FROM ghcr.io/hdl/debian/bullseye/sim/osvb
+        RUN apt update -qq && apt install -y \
+          git \
+          make \
+          python3-pip \
+          python3-setuptools \
+          python3-tk \
+         && pip3 install git+https://github.com/ghdl/ghdl.git@\$(ghdl version hash)
+        EOF
+
+    - name: '📓 BuildTheDocs (BTD)'
+      uses: buildthedocs/btd@v0
+      with:
+        token: ${{ github.token }}
+        skip-deploy: ${{ github.event_name == 'pull_request' }}
+
+    - name: '📤 Upload artifact: HTML'
+      if: github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v2
+      with:
+        path: docs/_build/html
+
+
+  VHDLModel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⏬ Checkout repository
+        uses: actions/checkout@v3
+
+      - name: ⚙ Setup GHDL
+        uses: ghdl/setup-ghdl-ci@master
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+
+      - name: 🐍 Install dependencies
+        run: pip3 install git+https://github.com/ghdl/ghdl.git@$(ghdl version hash)
+
+      - name: ☑ Run example snippet
+        run: python3 main.py
+
+      - run: ls -la $(dirname $(which ghdl))/../lib/ghdl/src/ieee2008
