@@ -10,3 +10,9 @@ VHDL Numerical User Guides
   ieee/math
   ieee/fp
   ieee/contexts
+
+.. toctree::
+  :caption: User Guides
+
+  dbishopx/fixed
+  dbishopx/float
